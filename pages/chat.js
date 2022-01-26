@@ -36,7 +36,7 @@ function ChatPage() {
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: appConfig.theme.colors.primary[200],
-        backgroundImage: `url(https://images3.alphacoders.com/251/251305.jpg)`,
+        backgroundImage: `url(https://pixabay.com/pt/illustrations/l%C3%A2mpada-el%C3%A9trica-id%C3%A9ia-aceso-4514505/)`,
         backgroundRepeat: "no-repeat",
         backgroundSize: "cover",
         backgroundBlendMode: "multiply",
