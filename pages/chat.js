@@ -120,9 +120,9 @@ export default function ChatPage() {
                             }}
                             buttonColors={{
                                 contrastColor: appConfig.theme.colors.neutrals["000"],
-                                mainColor: appConfig.theme.colors.primary[500],
+                                mainColor: appConfig.theme.colors.primary[800],
                                 mainColorLight: appConfig.theme.colors.primary[400],
-                                mainColorStrong: appConfig.theme.colors.primary[600],
+                                mainColorStrong: appConfig.theme.colors.primary[200],
                             }}
                         />
                     </Box>
