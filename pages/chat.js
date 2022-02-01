@@ -1,249 +1,563 @@
-   
-import { Box, Text, TextField, Image, Button } from '@skynexui/components';
-import React, { useState } from 'react';
-import appConfig from '../config.json';
+import { Box, Text, TextField, Image, Button } from "@skynexui/components";
+import React from "react";
+import appConfig from "../config.json";
+import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import { ButtonSendSticker } from "../src/components/ButtonSendSticker";
+
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzI5NjY2MywiZXhwIjoxOTU4ODcyNjYzfQ.fjVWvtWqXULoCZdYbzGlsitCDVZ_X_MABv0h5wJCErM';
+const SUPABASE_URL = 'https://uzrnxxgeoilwtmbbwvur.supabase.co';
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function escutaMensagensEmTempoReal(adicionaMensagem, removeMensagem) {
+  return supabaseClient
+    .from("mensagens")
+    .on("INSERT", (respostaLive) => {
+      console.log("ouve nova mensagem ", respostaLive);
+      adicionaMensagem(respostaLive.new);
+    })
+    .on("DELETE", (respostaLive) => {
+      removeMensagem(respostaLive.old.id);
+    })
+    .subscribe();
+}
 
 export default function ChatPage() {
-    const [message, setMessage] = useState('')
-    const [messageList, setMessageList] = useState([])
+  const [mensagem, setMessagem] = React.useState("");
+  const [listaDeMensagens, setListaDeMensagens] = React.useState([]);
+  const [isLoaded, setIsLoaded] = React.useState(false);
+  const roteamento = useRouter();
+  const user = roteamento.query.username;
 
-    function handleNewMessage(newMessage) {
-        const message = {
-            id: messageList.length + (Math.random() * 100),
-            text: newMessage,
-            user: 'munhozmarco',
-        }
+  // Sua lógica vai aqui
+  React.useEffect(() => {
+    supabaseClient
+      .from("mensagens")
+      .select("*")
+      .order("id", { ascending: false })
+      .then(({ data }) => {
+        setListaDeMensagens(data);
+        setIsLoaded(true);
+      });
 
-        setMessageList([
-            message,
-            ...messageList,
-        ])
-        setMessage('')
+    escutaMensagensEmTempoReal((novaMensagem) => {
+      console.log(`nova msg: ${novaMensagem}`);
+      setListaDeMensagens((valorAtualDaLista) => {
+        return [novaMensagem, ...valorAtualDaLista];
+      });
+    });
+  }, []);
+
+  function handleDeleteMessage(event, mensagemID, mensagemDe) {
+    event.preventDefault();
+    if (user.toUpperCase() === mensagemDe.toUpperCase()) {
+      supabaseClient
+        .from("mensagens")
+        .delete()
+        .match({ id: mensagemID })
+        .then(({ data }) => {
+          const apagarElementoLista = listaDeMensagens.filter(
+            (mensagem) => mensagem.id !== mensagemID
+          );
+          setListaDeMensagens(apagarElementoLista);
+        });
+    } else {
+      window.alert("Impossível deletar mensagem de outros usuários!");
     }
+  }
 
-    function handleDeleteMessage(event) {
-        const messageId = Number(event.target.dataset.id)
-        const messageListFiltered = messageList.filter((messageFiltered) => {
-            return messageFiltered.id != messageId
-        })
+  function handleNovaMensage(novaMensagem) {
+    const mensagem = {
+      // id: listaDeMensagens.length + 1,
+      de: user,
+      texto: novaMensagem,
+    };
 
-        setMessageList(messageListFiltered)
+    if (user === "") {
+      return window.alert("Espere! Insira depois da mensagem!");
     }
+    if (novaMensagem.length > 0) {
+      supabaseClient
+        .from("mensagens")
+        .insert([mensagem])
+        .then(({ data }) => {
+          // console.log("Criando mensagem: ", data);
+          // setListaDeMensagens([data[0], ...listaDeMensagens]);
+        });
+      setMessagem("");
+    } else {
+      window.alert("Impossível de enviar mensagem vazia !");
+    }
+  }
 
+  if (!isLoaded) {
     return (
+        <>
+        <style global jsx>{`
+            .loading-image {
+                max-width: 200px;
+                max-height: 200px;
+                animation: rotation .5s linear infinite; 
+            }
+            @keyframes rotation {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+        `}</style>
+
         <Box
             styleSheet={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 backgroundColor: 'rgba(0,0,0,0.6)',
                 backgroundImage: 'url(https://cdn.pixabay.com/photo/2019/09/29/22/06/light-bulb-4514505_1280.jpg)',
-                backgroundRepeat: 'no-repeat', backgroundSize: 'cover', backgroundBlendMode: 'multiply',
-                color: appConfig.theme.colors.neutrals['300']
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: 'cover', 
+                 backgroundBlendMode: 'multiply',
+                color: appConfig.theme.colors.neutrals['000']
             }}
         >
-            <Box
-                styleSheet={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    flex: 1,
-                    boxShadow: '0 2px 10px 0 rgb(0 0 0 / 20%)',
-                    borderRadius: '5px',
-                    backgroundColor: 'rgba( 255, 255, 255, 0.21 )',
-                    height: '100%',
-                    maxWidth: '95%',
-                    maxHeight: '95vh',
-                    padding: '32px',
-                }}
-            >
-                <Header />
-                <Box
-                    styleSheet={{
-                        position: 'relative',
-                        display: 'flex',
-                        flex: 1,
-                        height: '80%',
-                        backgroundColor: 'rgba( 0, 0, 0, 0.21 )',
-                        flexDirection: 'column',
-                        borderRadius: '5px',
-                        padding: '16px',
-                    }}
-                >
-
-                    <MessageList messageList={messageList} handleDeleteMessage={handleDeleteMessage} />
-                    {/* Lista de mensagens:
-                    <ul>
-                        {messageList.map((messageItem) => {
-                            return (
-                                <li key={messageItem.id}>
-                                    {messageItem.user}: {messageItem.text}
-                                </li>
-                            )
-                        })}
-                    </ul> */}
-
-                    <Box
-                        as="form"
-                        styleSheet={{
-                            display: 'flex',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <TextField
-                            value={message}
-                            onChange={(event) => {
-                                setMessage(event.target.value);
-                            }}
-                            onKeyPress={(event) => {
-                                if (event.key === 'Enter') {
-                                    event.preventDefault();
-                                    handleNewMessage(message);
-                                }
-                            }}
-                            placeholder="Insira sua mensagem aqui..."
-                            type="textarea"
-                            styleSheet={{
-                                width: '100%',
-                                border: '0',
-                                resize: 'none',
-                                borderRadius: '5px',
-                                padding: '6px 8px',
-                                backgroundColor: appConfig.theme.colors.neutrals[800],
-                                marginRight: '12px',
-                                color: appConfig.theme.colors.neutrals[200],
-                            }}
-                        />
-                        <Button
-                            onClick={() => handleNewMessage(message)}
-                            label='Entrar'
-                            fullWidth
-                            styleSheet={{
-                                maxWidth: '100px',
-                            }}
-                            buttonColors={{
-                                contrastColor: appConfig.theme.colors.neutrals["000"],
-                                mainColor: appConfig.theme.colors.primary[800],
-                                mainColorLight: appConfig.theme.colors.primary[400],
-                                mainColorStrong: appConfig.theme.colors.primary[200],
-                            }}
-                        />
-                    </Box>
-                </Box>
-            </Box>
+           <img src="vela.gif" className='loading-image' />
         </Box>
-    )
+    </>
+    );
+  }
+
+  if (isLoaded) {
+    return (
+           
+      <Box
+      
+        styleSheet={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            backgroundImage: 'url(https://cdn.pixabay.com/photo/2019/09/29/22/06/light-bulb-4514505_1280.jpg)',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: 'cover', 
+             backgroundBlendMode: 'multiply',
+            color: appConfig.theme.colors.neutrals['000']
+        }}
+      >
+
+        <Box
+          styleSheet={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            boxShadow: "0 2px 10px 0 rgb(0 0 0 / 20%)",
+            borderRadius: "5px",
+            backgroundColor: appConfig.theme.colors.primary["000"],
+            height: "100%",
+            width: "100%",
+            maxWidth: "100%",
+            maxHeight: "95vh",
+            padding: "32px",
+          }}
+        >
+          <Header username={user} />
+          <Box
+            styleSheet={{
+              position: "relative",
+              display: "flex",
+              flex: 1,
+              height: "80%",
+              backgroundColor: appConfig.theme.colors.neutrals["000"],
+              flexDirection: "column",
+              borderRadius: "5px",
+              padding: "16px",
+            }}
+          >
+            <MessageList
+              mensagem={listaDeMensagens}
+              onDelete={handleDeleteMessage}
+              currentUser={user}
+            />
+            <Box
+              as="form"
+              styleSheet={{
+                display: "flex",
+                alignItems: "stretch",
+              }}
+            >
+              <TextField
+                value={mensagem}
+                onChange={(event) => {
+                  const valor = event.target.value;
+                  setMessagem(valor);
+                }}
+                onKeyPress={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleNovaMensage(mensagem);
+                  }
+                }}
+                placeholder="Insira sua mensagem aqui..."
+                type="textarea"
+                styleSheet={{
+                  width: "100%",
+                  border: "0",
+                  resize: "none",
+                  borderRadius: "5px",
+                  padding: "6px 8px",
+                  backgroundColor: appConfig.theme.colors.neutrals[800],
+                  marginRight: "12px",
+                  color: appConfig.theme.colors.neutrals[200],
+                  hover: {
+                    backgroundColor: appConfig.theme.colors.neutrals[900],
+                  },
+                }}
+              />
+              {/* CALLBACK -> Chamada de retorno */}
+              <ButtonSendSticker
+                onStickerClick={(sticker) => {
+                  // console.log("[USANDO] Salva esse sticker no banco");
+                  handleNovaMensage(":sticker:" + sticker);
+                }}
+              />
+              <Button
+                type="submit"
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleNovaMensage(mensagem);
+                }}
+                label={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="feather feather-send"
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                }
+                styleSheet={{
+                  backgroundColor: "rgba(0,0,0,0)",
+                  color: appConfig.theme.colors.neutrals[100],
+                  transition: "0.5s",
+                  marginBottom: "6px",
+                  hover: {
+                    backgroundColor: appConfig.theme.colors.neutrals[900],
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 }
 
-function Header() {
-    return (
-        <>
-            <Box styleSheet={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} >
-                <Text variant='heading5'>
-                    Chat
-                </Text>
-                <Button
-                    variant='tertiary'
-                    colorVariant='neutral'
-                    label='Logout'
-                    href="/"
-                />
-            </Box>
-        </>
-    )
+function Header(props) {
+  return (
+    <>
+      <Box
+        styleSheet={{
+          width: "100%",
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text variant="heading5">Paparicando, {props.username}</Text>
+        <Button
+          variant="tertiary"
+          colorVariant="light"
+          label="Logout"
+          href="/"
+        />
+      </Box>
+    </>
+  );
 }
 
 function MessageList(props) {
+  // const [showInfo, setShowInfo] = React.useState("");
+  // const today = new Date();
+  const currentUser = props.currentUser;
 
-    const handleDeleteMessage = props.handleDeleteMessage
-
-    return (
-        <Box
-            tag="ul"
+  return (
+    <Box
+      tag="ul"
+      styleSheet={{
+        overflowY: "scroll",
+        display: "flex",
+        flexDirection: "column-reverse",
+        flex: 1,
+        position: "relative",
+        color: appConfig.theme.colors.neutrals["200"],
+        marginBottom: "16px",
+        width: "100%",
+      }}
+    >
+      {props.mensagem.map((mensagem) => {
+        let marginLeftDesk = "0";
+        let marginLeftMobile = "0";
+        let currentUserMessageBg = appConfig.theme.colors.primary[800];
+        currentUser.toUpperCase() === mensagem.de.toUpperCase()
+          ? ((marginLeftDesk = "14%"),
+            (marginLeftMobile = "10%"),
+            (currentUserMessageBg = appConfig.theme.colors.primary[600]))
+          : false;
+        const search = "-";
+        const replaceWith = "/";
+        const date = mensagem.created_at
+          .slice(0, mensagem.created_at.indexOf("T"))
+          .split(search)
+          .join(replaceWith);
+        const hour = mensagem.created_at.slice(
+          mensagem.created_at.indexOf("T") + 1,
+          mensagem.created_at.indexOf("T") + 6
+        );
+        return (
+          <Text
+            key={mensagem.id}
+            tag="li"
             styleSheet={{
-                overflow: 'auto',
-                display: 'flex',
-                flexDirection: 'column-reverse',
-                flex: 1,
-                color: appConfig.theme.colors.neutrals["000"],
-                marginBottom: '16px',
+              backgroundColor: currentUserMessageBg,
+              borderRadius: "5px",
+              display: "flex",
+              flexDirection: "column",
+              marginLeft: {
+                xs: "5px",
+                sm: "7px",
+              },
+              padding: "6px",
+              marginBottom: "12px",
+              wordBreak: "break-word",
+              width: {
+                xs: "90%",
+                md: "85%",
+              },
+              marginLeft: {
+                xs: marginLeftMobile,
+                md: marginLeftDesk,
+              },
+              hover: {
+                backgroundColor: appConfig.theme.colors.neutrals[700],
+              },
             }}
-        >
+          >
+            <Box
+              styleSheet={{
+                display: "flex",
+                flexWrap: "wrap",
+                margin: "0.25rem 0",
+              }}
+            >
+              <Link
+                href={`https://github.com/${mensagem.de}`}
+                styleSheet={{
+                  cursor: "pointer",
+                }}
+              >
+                <Text
+                  styleSheet={{
+                    fontWeight: "bolder",
+                    fontSize: "1em",
+                    minWidth: "70px",
+                    width: "10%",
+                    hover: {
+                      cursor: "pointer",
+                    },
+                  }}
+                ></Text>
+              </Link>
 
-            {props.messageList.map((messageItem) => {
+              <Text
+                styleSheet={{
+                  fontWeight: "normal",
+                  fontSize: "0.85em",
+                  minWidth: "100px",
+                  width: "10%",
+                }}
+              ></Text>
+              <Text
+                styleSheet={{
+                  fontWeight: "normal",
+                  fontSize: "0.85em",
+                  minWidth: "100px",
+                  width: "10%",
+                }}
+              ></Text>
+            </Box>
+            <Box
+              styleSheet={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+                minHeight: "90px",
+              }}
+            >
+              <Box
+                styleSheet={{
+                  alignItems: {
+                    xs: "flex-start",
+                    md: "center",
+                  },
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0 0.5rem",
+                  width: { xs: "80%" },
+                  maxWidth: "300px",
+                }}
+              >
+                <Link href={`https://github.com/${mensagem.de}`}>
+                  <Image
+                    title={`Open ${mensagem.de} GitHub`}
+                    styleSheet={{
+                      width: "30px",
+                      height: "30px",
+                      borderRadius: "50%",
+                      display: "inline-block",
+                      marginRight: "8px",
+                      marginLeft: {
+                        xs: "5px",
+                        sm: "7px",
+                      },
+                      hover: {
+                        cursor: "pointer",
+                        width: "35px",
+                        height: "35px",
+                      },
+                    }}
+                    src={`https://github.com/${mensagem.de}.png`}
+                  />
+                </Link>
+                <Text
+                  styleSheet={{
+                    marginLeft: {
+                      xs: "5px",
+                      sm: "7px",
+                    },
+                  }}
+                  tag="strong"
+                >
+                  {mensagem.de}
+                </Text>
+                <Text
+                  styleSheet={{
+                    fontSize: "12px",
+                    marginLeft: {
+                      xs: "5px",
+                      sm: "7px",
+                    },
+                    color: appConfig.theme.colors.neutrals[300],
+                  }}
+                  tag="span"
+                >
+                  {`${date}`}
+                </Text>
+                <Text
+                  onClick={async (event) => {
+                    const res = await fetch(
+                      `https://api.github.com/users/${mensagem.de}`
+                    );
+                    const userInfos = await res.json();
+                    console.log(userInfos);
+                    let moreInfo =
+                      event.target.parentNode.parentNode.parentNode.firstChild;
+                    let gitHubLink = moreInfo.childNodes[0];
+                    let gitHubRepos = moreInfo.childNodes[1];
+                    let gitHubFollowers = moreInfo.childNodes[2];
+                    event.target.innerText === "show"
+                      ? ((event.target.innerText = "hide"),
+                        (gitHubLink.innerText = "+GitHub"),
+                        (gitHubRepos.innerText = `Repos: ${userInfos.public_repos}`),
+                        (gitHubFollowers.innerText = `Followers: ${userInfos.followers}`))
+                      : ((event.target.innerText = "show"),
+                        (gitHubLink.innerText = ""),
+                        (gitHubRepos.innerText = ""),
+                        (gitHubFollowers.innerText = ``));
+                  }}
+                  styleSheet={{
+                    fontWeight: "bold",
+                    fontSize: "0.9em",
+                    marginLeft: {
+                      xs: "0",
+                      sm: "25px",
+                    },
+                    color: appConfig.theme.colors.neutrals[0],
+                    hover: {
+                      cursor: "pointer",
+                      color: appConfig.theme.colors.neutrals[400],
+                    },
+                  }}
+                  title={`Open ${mensagem.de} GitHub`}
+                  tag="span"
+                >
+                  show
+                </Text>
+              </Box>
+              <Box>
+                <Button
+                  key={mensagem.id}
+                  type="submit"
+                  onClick={(event) => {
+                    return props.onDelete(event, mensagem.id, mensagem.de);
+                  }}
+                  title={`Apagar mensagem`}
+                  styleSheet={{
+                    borderRadius: "100px",
+                    color: appConfig.theme.colors.neutrals[100],
+                    fontSize: "1em",
+                    fontWeight: "bold",
+                    transition: "0.5s",
+                  }}
+                  buttonColors={{
+                    contrastColor: "#FDFDFD",
+                    mainColor: "rgba(0, 0, 0, 0.0)",
+                    mainColorStrong: "rgba(255, 107, 107, .35)",
+                  }}
+                  colorVariant="negative"
+                  iconName="FaRegTrashAlt"
+                />
+              </Box>
+            </Box>
+            <Box
+              styleSheet={{
+                alignItems: "flex-end",
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              {mensagem.texto.startsWith(":sticker:") ? (
+                <Image
+                  styleSheet={{
+                    width: "50%",
+                    maxWidth: "120px",
+                  }}
+                  src={mensagem.texto.replace(":sticker:", "")}
+                />
+              ) : (
+                mensagem.texto
+              )}
 
-                return (
-                    <Text
-                        key={messageItem.id}
-                        tag="li"
-                        styleSheet={{
-                            borderRadius: '5px',
-                            padding: '6px',
-                            marginBottom: '12px',
-                            wordBreak: 'break-word',
-                            hover: {
-                                backgroundColor: 'rgba( 0, 0, 0, 0.21 )',
-                            }
-                        }}
-                    >
-                        <Box
-                            styleSheet={{
-                                marginBottom: '8px',
-                                position: 'relative',
-                                display: 'flex',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Image
-                                styleSheet={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    display: 'inline-block',
-                                    marginRight: '8px',
-                                }}
-                                src={`https://github.com/${messageItem.user}.png`}
-                            />
-                            <Text tag="strong">
-                                {messageItem.user}
-                            </Text>
-                            <Text
-                                styleSheet={{
-                                    fontSize: '10px',
-                                    marginLeft: '8px',
-                                    color: appConfig.theme.colors.neutrals[300],
-                                }}
-                                tag="span"
-                            >
-                                {(new Date().toLocaleDateString())}
-                            </Text>
-                            <Text
-                                onClick={handleDeleteMessage}
-                                styleSheet={{
-                                    fontSize: '10px',
-                                    fontWeight: 'bold',
-                                    marginLeft: 'auto',
-                                    color: '#FFF',
-                                    backgroundColor: 'rgba(0,0,0,.5)',
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                }}
-                                tag="span"
-                                data-id={messageItem.id}
-                            >
-                                X
-                            </Text>
-                        </Box>
-                        {messageItem.text}
-                    </Text>
-
-                )
-
-            })
-            }
-
-        </Box>
-    )
+              <Text
+                styleSheet={{
+                  textAlign: "right",
+                  fontSize: "10px",
+                  marginLeft: "13px",
+                  width: "22%",
+                  color: appConfig.theme.colors.neutrals[300],
+                }}
+                tag="span"
+              >
+                {hour}
+              </Text>
+            </Box>
+          </Text>
+        );
+      })}
+    </Box>
+  );
 }

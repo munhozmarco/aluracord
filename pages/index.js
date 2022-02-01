@@ -1,7 +1,8 @@
 import { Box, Button, Text, TextField, Image } from '@skynexui/components';
 import React from 'react';
-import { useRouter } from 'next/router';
 import appConfig from '../config.json';
+import { useState } from 'react'
+import { useRouter } from 'next/router' 
 
 
 function Titulo(props) {
@@ -36,8 +37,11 @@ function Titulo(props) {
 export default function PaginaInicial() {
  //const username = 'munhozmarco';
 
-  const [username, setUsername] = React.useState('munhozmarco');
+ // const [username, setUsername] = React.useState('munhozmarco');
   // console.log ('stateDoReact','stateDoReact');
+ // const roteamento = useRouter();
+
+  const [username, setUsername] = useState('munhozmarco');
   const roteamento = useRouter();
 
   return (
@@ -72,8 +76,9 @@ export default function PaginaInicial() {
             onSubmit={function (infosDoEvento) {
               infosDoEvento.preventDefault();
               console.log('Alguém submeteu o form');
-              roteamento.push('/chat');
+              roteamento.push(`/chat?username=${username}`);
               // window.location.href = '/chat';
+
             }}
             styleSheet={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -120,7 +125,7 @@ export default function PaginaInicial() {
             />
             <Button
               type='submit'
-              label='Entrar'
+              label='Ok'
               fullWidth
               buttonColors={{
                 contrastColor: appConfig.theme.colors.neutrals["000"],
